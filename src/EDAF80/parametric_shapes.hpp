@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/helpers.hpp"
+#include <assimp/scene.h>
 
 namespace parametric_shapes
 {
@@ -22,7 +23,6 @@ namespace parametric_shapes
 	bonobo::mesh_data createQuad(float const width, float const height,
 	                             unsigned int const horizontal_split_count = 0u,
 	                             unsigned int const vertical_split_count = 0u);
-
 	//! \brief Create a sphere for a given tesselation level and make it
 	//!        available to OpenGL.
 	//!
@@ -45,7 +45,6 @@ namespace parametric_shapes
 	bonobo::mesh_data createSphere(float const radius,
 	                               unsigned int const longitude_split_count,
 	                               unsigned int const latitude_split_count);
-
 	//! \brief Create a torus for a given tesselation level and make it
 	//!        available to OpenGL.
 	//!
@@ -99,4 +98,16 @@ namespace parametric_shapes
 	                                   float const spread_length,
 	                                   unsigned int const circle_split_count,
 	                                   unsigned int const spread_split_count);
+	bonobo::mesh_data createBriefCircleRingBatch(float const radius,
+		float const spread_length,
+		unsigned int const circle_split_count,
+		unsigned int const spread_split_count, int particleNum, std::vector<glm::vec2> positions, std::vector<glm::vec2>& velocities);
+	bonobo::mesh_data createBriefCircleRingBatch2(float const radius,
+		float const spread_length,
+		unsigned int const circle_split_count,
+		unsigned int const spread_split_count, int particleNum, std::vector<glm::vec2>& positions, std::vector<glm::vec2>& velocities);
+	bonobo::mesh_data createBriefCircleRingBatch3(float const radius,
+		float const spread_length,
+		unsigned int const circle_split_count,
+		unsigned int const spread_split_count, int particleNum, std::vector<glm::vec2>* positions, std::vector<glm::vec2>* velocities);
 }

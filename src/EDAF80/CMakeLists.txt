@@ -84,8 +84,19 @@ target_sources (
 		[[assignment5.hpp]]
 		[[assignment5.cpp]]
 )
-target_link_libraries (EDAF80_Assignment5 PRIVATE assignment_setup)
+target_link_libraries (EDAF80_Assignment5 PRIVATE assignment_setup interpolation parametric_shapes)
 copy_dlls (EDAF80_Assignment5 "${CMAKE_CURRENT_BINARY_DIR}")
+
+# project
+add_executable (EDAN35_project)
+target_sources (
+	EDAN35_project
+	PRIVATE
+		[[project.hpp]]
+		[[project.cpp]]
+)
+target_link_libraries (EDAN35_project PRIVATE assignment_setup interpolation parametric_shapes)
+copy_dlls (EDAN35_project "${CMAKE_CURRENT_BINARY_DIR}")
 
 
 install (
@@ -95,5 +106,6 @@ install (
 		EDAF80_Assignment3
 		EDAF80_Assignment4
 		EDAF80_Assignment5
+		EDAN35_project
 	DESTINATION [[bin]]
 )

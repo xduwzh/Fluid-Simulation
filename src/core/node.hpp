@@ -22,7 +22,13 @@ public:
 	//! @param [in] parent_transform Matrix transforming from parent-space to
 	//!             world-space
 	void render(glm::mat4 const& view_projection,
-	            glm::mat4 const& parent_transform = glm::mat4(1.0f)) const;
+		glm::mat4 const& parent_transform = glm::mat4(1.0f)) const;
+	void render(glm::mat4 const& view_projection,glm::vec2 position,
+		glm::mat4 const& parent_transform = glm::mat4(1.0f)) const;
+	void render(glm::mat4 const& view_projection, int instanceNum, std::vector<glm::vec2>& positions, std::vector<glm::vec2>& velocities,
+		glm::mat4 const& parent_transform = glm::mat4(1.0f)) const;
+	void render(glm::mat4 const& view_projection, int instanceNum, GLuint positionsBuffer, GLuint velocitiesBuffer,
+		glm::mat4 const& parent_transform) const;
 
 	//! \brief Render this node with a specific shader program.
 	//!
@@ -40,7 +46,13 @@ public:
 	void render(glm::mat4 const& view_projection, glm::mat4 const& world,
 	            GLuint program,
 	            std::function<void (GLuint)> const& set_uniforms = [](GLuint /*programID*/){}) const;
-
+	void render(glm::mat4 const& view_projection, glm::mat4 const& world,
+		int instanceNum, std::vector<glm::vec2>& positions, std::vector<glm::vec2>& velocities,
+		GLuint program,
+		std::function<void(GLuint)> const& set_uniforms = [](GLuint /*programID*/) {}) const;
+	void render(glm::mat4 const& view_projection, glm::mat4 const& world,
+		int instanceNum, GLuint positions, GLuint velocities,
+		GLuint program, std::function<void(GLuint)> const& set_uniforms) const;
 	//! \brief Set the geometry of this node.
 	//!
 	//! It will overwrite any constants provided by an earlier call to

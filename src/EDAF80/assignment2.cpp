@@ -15,7 +15,7 @@
 
 #include <array>
 #include <clocale>
-#include <cstdlib>
+#include <cstdlib>++
 #include <stdexcept>
 
 edaf80::Assignment2::Assignment2(WindowManager& windowManager) :
@@ -43,12 +43,18 @@ void
 edaf80::Assignment2::run()
 {
 	// Load the sphere geometry
-	auto const shape = parametric_shapes::createCircleRing(2.0f, 0.75f, 40u, 4u);
+	//auto const shape = parametric_shapes::createCircleRing(2.0f, 0.75f, 40u, 4u);
+	//auto const shape = parametric_shapes::createQuad(0.25f, 0.15f);
+	auto const shape = parametric_shapes::createSphere(0.15f, 20u, 20u);
+	//auto const shape = parametric_shapes::createQuad(100.0f, 100.0f, 1000, 1000);
+	//auto const shape = parametric_shapes::createSphere1(0.15f, 10u, 10u);
 	if (shape.vao == 0u)
 		return;
 
 	// Set up the camera
-	mCamera.mWorld.SetTranslate(glm::vec3(0.0f, 1.0f, 9.0f));
+	//mCamera.mWorld.SetTranslate(glm::vec3(0.0f, 1.0f, 9.0f));
+	//changed
+	mCamera.mWorld.SetTranslate(glm::vec3(0.0f, 0.0f, 0.5f));
 	mCamera.mMouseSensitivity = glm::vec2(0.003f);
 	mCamera.mMovementSpeed = glm::vec3(3.0f); // 3 m/s => 10.8 km/h
 
@@ -111,19 +117,21 @@ edaf80::Assignment2::run()
 
 	// Set the default tensions value; it can always be changed at runtime
 	// through the "Scene Controls" window.
-	float catmull_rom_tension = 0.0f;
+	float catmull_rom_tension = 0.5f;
 
 	// Set whether the default interpolation algorithm should be the linear one;
 	// it can always be changed at runtime through the "Scene Controls" window.
-	bool use_linear = true;
+	bool use_linear = false;
+
 
 	// Set whether to interpolate the position of an object or not; it can
 	// always be changed at runtime through the "Scene Controls" window.
-	bool interpolate = true;
+	bool interpolate = false;
 
 	// Set whether to show the control points or not; it can always be changed
 	// at runtime through the "Scene Controls" window.
 	bool show_control_points = true;
+
 
 	auto circle_rings = Node();
 	circle_rings.set_geometry(shape);
@@ -141,7 +149,8 @@ edaf80::Assignment2::run()
 
 	auto const control_point_sphere = parametric_shapes::createSphere(0.1f, 10u, 10u);
 	std::array<glm::vec3, 9> control_point_locations = {
-		glm::vec3( 0.0f,  0.0f,  0.0f),
+		//glm::vec3( 0.0f,  0.0f,  0.0f),
+		glm::vec3(3.0f,  0.0f,  0.0f),
 		glm::vec3( 1.0f,  1.8f,  1.0f),
 		glm::vec3( 2.0f,  1.2f,  2.0f),
 		glm::vec3( 3.0f,  3.0f,  3.0f),
@@ -159,7 +168,13 @@ edaf80::Assignment2::run()
 		control_point.get_transform().SetTranslate(control_point_locations[i]);
 	}
 
-
+	//added
+	int interpolationPointIndex = 0;//the index of the start point
+	int p0Index = control_point_locations.size() - 1;
+	int p2Index = 1;
+	int p3Index = 2;
+	float interpolationMixRate = 0.0f;//the num of mixRate from one point to another point 
+	//added end
 	auto lastTime = std::chrono::high_resolution_clock::now();
 
 	std::int32_t program_index = 0;
@@ -216,15 +231,32 @@ edaf80::Assignment2::run()
 		if (interpolate) {
 			//! \todo Interpolate the movement of a shape between various
 			//!        control points.
+			interpolationMixRate += std::chrono::duration<float>(deltaTimeUs).count();// * 0.5f;
+			if (interpolationMixRate > 1 || interpolationMixRate == 1) {
+				interpolationMixRate -= 1;
+
+				interpolationPointIndex += 1;
+				if (interpolationPointIndex > control_point_locations.size() - 1) {
+					interpolationPointIndex = 0;
+				}
+				p0Index = interpolationPointIndex == 0 ? control_point_locations.size() - 1 : interpolationPointIndex - 1;
+				p2Index = interpolationPointIndex + 1 == control_point_locations.size() ? 0: interpolationPointIndex + 1;
+				p3Index = (interpolationPointIndex + 2 > control_point_locations.size() ||
+					interpolationPointIndex + 2 == control_point_locations.size()) ? (interpolationPointIndex + 2) - control_point_locations.size() : interpolationPointIndex + 2;			
+				std::cout << p0Index << "," << interpolationPointIndex << "," << p2Index << "," << p3Index << std::endl;
+			}	
 			if (use_linear) {
 				//! \todo Compute the interpolated position
 				//!       using the linear interpolation.
+				circle_rings.get_transform().SetTranslate(interpolation::evalLERP(control_point_locations[interpolationPointIndex], control_point_locations[p2Index], interpolationMixRate));
 			}
 			else {
 				//! \todo Compute the interpolated position
 				//!       using the Catmull-Rom interpolation;
 				//!       use the `catmull_rom_tension`
 				//!       variable as your tension argument.
+				circle_rings.get_transform().SetTranslate(interpolation::evalCatmullRom(control_point_locations[p0Index],
+					control_point_locations[interpolationPointIndex], control_point_locations[p2Index], control_point_locations[p3Index], catmull_rom_tension, interpolationMixRate));
 			}
 		}
 

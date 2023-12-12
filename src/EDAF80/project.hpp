@@ -16,10 +16,10 @@ namespace edaf80
 	public:
 		ParticleSpawner();
 		~ParticleSpawner();
-		int particleCount = 4096;//4032
+		unsigned int particleCount = 10000;//4096
 
 		glm::vec2 initialVelocity = glm::vec2(0.0f, 0.0f);
-		glm::vec2 spawnCentre = glm::vec2(0.0f, 0.0f);
+		glm::vec2 spawnCentre = glm::vec2(2.0f, 0.5f);
 		glm::vec2 spawnSize = glm::vec2(7.0f, 5.0f);//7,5
 		float jitterStr = 0.025;
 		bool showSpawnBoundsGizmos;
@@ -84,7 +84,15 @@ namespace edaf80
 		GLuint createComputeShaderProgram(const std::string& computeShaderSource);
 		std::string readFile(const std::string& filePath);
 		ParticleSpawner spawner = ParticleSpawner();
-
+		struct particleParameter {
+			glm::vec2 position;
+			glm::vec2 velocity;
+			glm::vec2 predictedPosition;
+			glm::vec2 density;
+			glm::uvec3 spatialIndices;
+			unsigned int spatial;
+		};
+		glm::vec2 CalculateDensity1(std::vector<particleParameter> particles);
 	private:
 		FPSCameraf     mCamera;
 		InputHandler   inputHandler;
@@ -92,18 +100,21 @@ namespace edaf80
 		GLFWwindow* window;
 
 		//project parameter
+		unsigned int particlesNum = 10000; //4096
 		float particleRadius = 0.02f;//0.02f;
 		float PoolHeight = 9.0f;
 		float poolWidth = 17.1f;
-		float collisionDamping = 0.5f;
-		float gravity = -10.0f;
+		float collisionDamping = 0.8f;
+		float gravity = -6.0f;
 		glm::vec2 boundsSize = glm::vec2(17.1f, 9.0f);
 
 		float smoothingRadius = 0.35f;
-		float targetDensity = 55.0f;
+		float targetDensity = 55.0f;//55
 		float pressureMultiplier = 500.0f;
 		float nearPressureMultiplier = 18.0f;
 		float viscosityStrength = 0.06f;
+
+		float pi = 3.14159265359f;
 		
 	};
 

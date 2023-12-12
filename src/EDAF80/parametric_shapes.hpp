@@ -45,6 +45,12 @@ namespace parametric_shapes
 	bonobo::mesh_data createSphere(float const radius,
 	                               unsigned int const longitude_split_count,
 	                               unsigned int const latitude_split_count);
+	bonobo::mesh_data createSphereBatch(float const radius,
+		unsigned int const longitude_split_count,
+		unsigned int const latitude_split_count, int particleNum, std::vector<glm::vec3>& positions, std::vector<glm::vec3>& velocities);
+	bonobo::mesh_data createSphereBatch2(float const radius,
+		unsigned int const longitude_split_count,
+		unsigned int const latitude_split_count, int particleNum, std::vector<glm::vec3>& positions, std::vector<glm::vec3>& velocities);
 	//! \brief Create a torus for a given tesselation level and make it
 	//!        available to OpenGL.
 	//!

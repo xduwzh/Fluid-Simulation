@@ -1,4 +1,4 @@
-#include "project.hpp"
+#include "project3D.hpp"
 #include "parametric_shapes.hpp"
 
 #include "config.hpp"
@@ -25,7 +25,7 @@
 #include <fstream>
 #include <sstream>
 
-edaf80::project::project(WindowManager& windowManager) :
+edaf80::project3D::project3D(WindowManager& windowManager) :
 	mCamera(0.5f * glm::half_pi<float>(),
 		static_cast<float>(config::resolution_x) / static_cast<float>(config::resolution_y),
 		0.01f, 1000.0f),
@@ -41,27 +41,13 @@ edaf80::project::project(WindowManager& windowManager) :
 	bonobo::init();
 }
 
-edaf80::project::~project()
+edaf80::project3D::~project3D()
 {
 	bonobo::deinit();
 }
 
-void
-edaf80::project::boundaryCollisions(glm::vec3* position, glm::vec3* velocity) {
-	glm::vec2 halfBoundSize = glm::vec2(poolWidth / 2 - particleRadius, PoolHeight / 2 - particleRadius);
-
-	if (abs(position->x) > halfBoundSize.x) {
-		
-		position->x = halfBoundSize.x * (signbit(position->x)?1:-1);
-		velocity->x *= -1 * collisionDamping;
-	}
-	if (abs(position->y) > halfBoundSize.y) {
-		position->y = halfBoundSize.y * (signbit(position->x) ? 1 : -1);
-		velocity->y *= -1 * collisionDamping;
-	}
-}
 std::string
-edaf80::project::readFile(const std::string& filePath) {
+edaf80::project3D::readFile(const std::string& filePath) {
 	std::ifstream file(filePath);
 	if (!file) {
 		std::cerr << "Failed to open file: " << filePath << std::endl;
@@ -73,7 +59,7 @@ edaf80::project::readFile(const std::string& filePath) {
 	return content.str();
 }
 GLuint
-edaf80::project::compileShader(GLenum shaderType, const std::string& source) {
+edaf80::project3D::compileShader(GLenum shaderType, const std::string& source) {
 	GLuint shader = glCreateShader(shaderType);
 	const char* sourcePtr = source.c_str();
 	glShaderSource(shader, 1, &sourcePtr, nullptr);
@@ -93,7 +79,7 @@ edaf80::project::compileShader(GLenum shaderType, const std::string& source) {
 	return shader;
 }
 GLuint
-edaf80::project::createComputeShaderProgram(const std::string& computeShaderSource) {
+edaf80::project3D::createComputeShaderProgram(const std::string& computeShaderSource) {
 	// ±àÒë¼ÆËã×ÅÉ«Æ÷
 	GLuint computeShader = compileShader(GL_COMPUTE_SHADER, computeShaderSource);
 	if (computeShader == 0) {
@@ -121,135 +107,18 @@ edaf80::project::createComputeShaderProgram(const std::string& computeShaderSour
 
 	return computeProgram;
 }
-glm::vec2
-edaf80::project::CalculateDensity1(std::vector<particleParameter> particles) {
-	float sqrRadiaus = smoothingRadius * smoothingRadius;
-	float density = 0.0;
-	float nearDensity = 0.0;
-	int i = 0;
-	while (i < particlesNum - 1) {
-		i++;
-		glm::vec2 neighbourPos = particles[i].predictedPosition;
-		glm::vec2 offsetToNeighbour = neighbourPos - particles[i].position;
-		float sqrDstToNeighbour = dot(offsetToNeighbour, offsetToNeighbour);
 
-		if (sqrDstToNeighbour > sqrRadiaus) continue;
 
-		float dst = sqrt(sqrDstToNeighbour);
-		if (dst < smoothingRadius)
-		{
-			float v = smoothingRadius - dst;
-			float SpikyPow2ScalingFactor = 6 / (pow(smoothingRadius, 4) * pi);
-			density += v * v * SpikyPow2ScalingFactor;
-		}
-		if (dst < smoothingRadius)
-		{
-			float v = smoothingRadius - dst;
-			float SpikyPow3ScalingFactor = 10 / (pow(smoothingRadius, 5) * pi);
-			nearDensity += v * v * SpikyPow3ScalingFactor;
-		}
-	}
-	return glm::vec2(density, nearDensity);
-}
-
-edaf80::ParticleSpawner::ParticleSpawner()
+edaf80::ParticleSpawner3D::ParticleSpawner3D()
 {
 }
 
-edaf80::ParticleSpawner::~ParticleSpawner()
+edaf80::ParticleSpawner3D::~ParticleSpawner3D()
 {
 }
-class ParticleDisplay2D
-{
-public:
-	ParticleDisplay2D();
-	~ParticleDisplay2D();
-
-private:
-
-};
-
-ParticleDisplay2D::ParticleDisplay2D()
-{
-}
-
-ParticleDisplay2D::~ParticleDisplay2D()
-{
-}
-
-const GLchar* computeShaderSource = R"(
-    #version 430 core
-
-    layout(binding = 0, std430) buffer DataBuffer {
-        vec2 data[];
-    };
-	layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
-
-    void main() {
-        uint index = gl_GlobalInvocationID.x;
-        data[index] += vec2(0.0, -2.0);
-    }
-)";
-const GLchar* computeShaderSource1 = R"(
-    #version 430 core
-
-    layout(std430, binding = 0) buffer PositionBuffer {
-		vec4 Positions[];
-	};
-	layout(std430, binding = 1) buffer VelocityBuffer {
-		vec4 Velocities[];
-	};
-	uniform float collisionDamping;
-	uniform float gravity;
-	uniform float particleRadius;
-	uniform float deltaTime;
-	uniform vec2 boundsSize;
-
-	layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
-    void main() {
-        uint index = gl_GlobalInvocationID.x;
-        float2 pos = Positions[particleIndex];
-		float2 vel = Velocities[particleIndex];
-
-		// Keep particle inside bounds
-		const float2 halfSize = boundsSize * 0.5;
-		float2 edgeDst = halfSize - abs(pos);
-
-		if (edgeDst.x <= 0)
-		{
-				pos.x = halfSize.x * sign(pos.x);
-		vel.x *= -1 * collisionDamping;
-		}
-		if (edgeDst.y <= 0)
-		{
-			pos.y = halfSize.y * sign(pos.y);
-			vel.y *= -1 * collisionDamping;
-		}
-
-		// Collide particle against the test obstacle
-		const float2 obstacleHalfSize = obstacleSize * 0.5;
-		float2 obstacleEdgeDst = obstacleHalfSize - abs(pos - obstacleCentre);
-
-		if (obstacleEdgeDst.x >= 0 && obstacleEdgeDst.y >= 0)
-	{
-		if (obstacleEdgeDst.x < obstacleEdgeDst.y) {
-			pos.x = obstacleHalfSize.x * sign(pos.x - obstacleCentre.x) + obstacleCentre.x;
-			vel.x *= -1 * collisionDamping;
-		}
-		else {
-			pos.y = obstacleHalfSize.y * sign(pos.y - obstacleCentre.y) + obstacleCentre.y;
-			vel.y *= -1 * collisionDamping;
-		}
-	}
-
-	// Update position and velocity
-	Positions[particleIndex] = pos;
-	Velocities[particleIndex] = vel;
-    }
-)";
 
 void
-edaf80::project::run()
+edaf80::project3D::run()
 {
 	//auto const shape = parametric_shapes::createBriefCircleRing(particleRadius, particleRadius * 2, 40u, 4u);
 	//if (shape.vao == 0u)
@@ -257,14 +126,14 @@ edaf80::project::run()
 	// Set up the camera
 	mCamera.mWorld.SetTranslate(glm::vec3(0.0f, 0.0f, 20.0f));
 	mCamera.mMouseSensitivity = glm::vec2(0.003f);
-	mCamera.mMovementSpeed = glm::vec3(10.0f); // 3 m/s => 10.8 km/h
+	mCamera.mMovementSpeed = glm::vec3(3.0f); // 3 m/s => 10.8 km/h
 
 	// Create the shader programs
 	ShaderProgramManager program_manager;
 	GLuint fallback_shader = 0u;
 	program_manager.CreateAndRegisterProgram("Fallback",
-		{ { ShaderType::vertex, "common/fallbackParticle.vert" },
-		  { ShaderType::fragment, "common/fallbackParticle.frag" } },
+		{ { ShaderType::vertex, "common/fallbackParticle3D.vert" },
+		  { ShaderType::fragment, "common/fallbackParticle3D.frag" } },
 		fallback_shader);
 	if (fallback_shader == 0u) {
 		LogError("Failed to load fallback shader");
@@ -296,15 +165,16 @@ edaf80::project::run()
 	// Todo: Insert the creation of other shader programs.
 	//       (Check how it was done in assignment 3.)
 	//
-	std::vector<glm::vec2> positions;
-	std::vector<glm::vec2> velocities;
+	std::vector<glm::vec3> positions;
+	std::vector<glm::vec3> velocities;
 	positions = spawner.GetSpawnData().positions;
 	velocities = spawner.GetSpawnData().velocities;
 	//for (int i = 0; i < 100; i++) {
 	//	velocities[i] += glm::vec2(5.0f, 0.0f);
 	//}
 	//auto const shape = parametric_shapes::createBriefCircleRingBatch3(particleRadius, particleRadius * 2, 10u, 2u, spawner.particleCount, &positions, &velocities);
-	auto const shape = parametric_shapes::createBriefCircleRingBatch2(particleRadius, particleRadius * 2, 10u, 2u, spawner.particleCount, positions, velocities);
+	auto const shape = parametric_shapes::createSphereBatch2(particleRadius, 10u, 10u, spawner.particleCount, positions, velocities);
+	//auto const shape = parametric_shapes::createSphere(0.1f, 10u, 10u);
 	//for (int i = 0; i < 100; i++) {
 	//	positions[i] += glm::vec2(1.0f, 0.0f);
 	//}
@@ -323,7 +193,7 @@ edaf80::project::run()
 		//particles[i].density = CalculateDensity1(particles);
 	}
 	//std::cout << particles[10].density << std::endl;
-	
+
 
 	//GLuint positionBuffer;
 	//glGenBuffers(1, &positionBuffer);
@@ -418,8 +288,8 @@ edaf80::project::run()
 	Node up_boundary_node;
 	up_boundary_node.set_geometry(hor_boundary_shape);
 	up_boundary_node.set_program(&fallbackBoundary_shader, set_uniforms);
-	up_boundary_node.get_transform().SetTranslate(glm::vec3(-poolWidth/2, -PoolHeight/2 , 0.0f));
-	up_boundary_node.get_transform().SetRotateX(-glm::pi<float>() /2);
+	up_boundary_node.get_transform().SetTranslate(glm::vec3(-poolWidth / 2, -PoolHeight / 2, 0.0f));
+	up_boundary_node.get_transform().SetRotateX(-glm::pi<float>() / 2);
 	Node down_boundary_node;
 	down_boundary_node.set_geometry(hor_boundary_shape);
 	down_boundary_node.set_program(&fallbackBoundary_shader, set_uniforms);
@@ -474,7 +344,7 @@ edaf80::project::run()
 		lastTime = nowTime;
 		elapsed_time_s += std::chrono::duration<float>(deltaTimeUs).count();
 		float_deltaTime = std::chrono::duration<float>(deltaTimeUs).count();
-		
+
 		//calculate fps
 		auto const frame_current_Time = std::chrono::high_resolution_clock::now();
 		auto const frame_deltaTimeUs = std::chrono::duration_cast<std::chrono::microseconds>(frame_current_Time - frame_last_Time);
@@ -553,41 +423,38 @@ edaf80::project::run()
 			//}
 			//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, positionBuffer);
 			//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, velocityBuffer);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, particleBuffer);
-			glUseProgram(computeProgram);
-			glUniform1f(glGetUniformLocation(computeProgram, "collisionDamping") , collisionDamping);
-			glUniform1f(glGetUniformLocation(computeProgram, "gravity"), gravity);
-			glUniform1f(glGetUniformLocation(computeProgram, "particleRadius"), particleRadius);
-			glUniform1f(glGetUniformLocation(computeProgram, "deltaTime"), float_deltaTime);
-			glUniform2fv(glGetUniformLocation(computeProgram, "boundsSize"), 1, glm::value_ptr(boundsSize));
+			//-------------------------------------------------
+			//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, particleBuffer);
+			//glUseProgram(computeProgram);
+			//glUniform1f(glGetUniformLocation(computeProgram, "collisionDamping"), collisionDamping);
+			//glUniform1f(glGetUniformLocation(computeProgram, "gravity"), gravity);
+			//glUniform1f(glGetUniformLocation(computeProgram, "particleRadius"), particleRadius);
+			//glUniform1f(glGetUniformLocation(computeProgram, "deltaTime"), float_deltaTime);
+			//glUniform2fv(glGetUniformLocation(computeProgram, "boundsSize"), 1, glm::value_ptr(boundsSize));
 
-			glUniform1i(glGetUniformLocation(computeProgram, "numParticles"), particlesNum);
-			glUniform1f(glGetUniformLocation(computeProgram, "smoothingRadius"), smoothingRadius);
-			glUniform1f(glGetUniformLocation(computeProgram, "targetDensity"), targetDensity);
-			glUniform1f(glGetUniformLocation(computeProgram, "pressureMultiplier"), pressureMultiplier);
-			glUniform1f(glGetUniformLocation(computeProgram, "nearPressureMultiplier"), nearPressureMultiplier);
-			glUniform1f(glGetUniformLocation(computeProgram, "viscosityStrength"), viscosityStrength);
-			glDispatchCompute(100, 1, 1);
-			//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-			glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, particles.size() * sizeof(particleParameter), particles.data());
-			for (int i = 0; i < spawner.particleCount; i++) {
-				positions[i] = particles[i].position;
-				velocities[i] = particles[i].velocity;
-			}
-			//test
-			std::cout << velocities[100] << std::endl;
-			//glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, positions.size() * sizeof(glm::vec2), velocities.size() * sizeof(glm::vec2), velocities.data());
-			//glDeleteBuffers(1, &buffer);
-			//glDeleteProgram(computeProgram);
-			glUseProgram(0);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0u);
+			//glUniform1i(glGetUniformLocation(computeProgram, "numParticles"), particlesNum);
+			//glUniform1f(glGetUniformLocation(computeProgram, "smoothingRadius"), smoothingRadius);
+			//glUniform1f(glGetUniformLocation(computeProgram, "targetDensity"), targetDensity);
+			//glUniform1f(glGetUniformLocation(computeProgram, "pressureMultiplier"), pressureMultiplier);
+			//glUniform1f(glGetUniformLocation(computeProgram, "nearPressureMultiplier"), nearPressureMultiplier);
+			//glUniform1f(glGetUniformLocation(computeProgram, "viscosityStrength"), viscosityStrength);
+			//glDispatchCompute(100, 1, 1);
+			////glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+			//glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, particles.size() * sizeof(particleParameter), particles.data());
+			//for (int i = 0; i < spawner.particleCount; i++) {
+			//	positions[i] = particles[i].position;
+			//	velocities[i] = particles[i].velocity;
+			//}
+			////test
+			////glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, positions.size() * sizeof(glm::vec2), velocities.size() * sizeof(glm::vec2), velocities.data());
+			////glDeleteBuffers(1, &buffer);
+			////glDeleteProgram(computeProgram);
+			//glUseProgram(0);
+			//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0u);
+			//------------------------------------------
 			//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0u);
-
-			circle.render(mCamera.GetWorldToClipMatrix(),spawner.particleCount, positions, velocities);
-			//up_boundary_node.render(mCamera.GetWorldToClipMatrix());
-			//down_boundary_node.render(mCamera.GetWorldToClipMatrix());
-			//left_boundary_node.render(mCamera.GetWorldToClipMatrix());
-			//right_boundary_node.render(mCamera.GetWorldToClipMatrix());
+			//circle.render(mCamera.GetWorldToClipMatrix());
+			circle.render(mCamera.GetWorldToClipMatrix(), spawner.particleCount, positions, velocities);
 		}
 
 
@@ -623,8 +490,8 @@ int main()
 	Bonobo framework;
 
 	try {
-		edaf80::project project(framework.GetWindowManager());
-		project.run();
+		edaf80::project3D project3D(framework.GetWindowManager());
+		project3D.run();
 	}
 	catch (std::runtime_error const& e) {
 		LogError(e.what());

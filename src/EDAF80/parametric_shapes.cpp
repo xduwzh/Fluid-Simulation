@@ -588,98 +588,6 @@ parametric_shapes::createCircleRing(float const radius,
 	return data;
 }
 bonobo::mesh_data
-parametric_shapes::createBriefCircleRingBatch(float const radius,
-	float const spread_length,
-	unsigned int const circle_split_count,
-	unsigned int const spread_split_count, int particleNum, std::vector<glm::vec2> positions, std::vector<glm::vec2>& velocities)
-{
-	auto const circle_slice_edges_count = circle_split_count + 1u;
-	auto const spread_slice_edges_count = spread_split_count + 1u;
-	auto const circle_slice_vertices_count = circle_slice_edges_count + 1u;
-	auto const spread_slice_vertices_count = spread_slice_edges_count + 1u;
-	auto const vertices_nb = circle_slice_vertices_count * spread_slice_vertices_count;
-
-	auto vertices = std::vector<glm::vec3>(vertices_nb);
-
-	float const spread_start = radius - 0.5f * spread_length;
-	float const d_theta = glm::two_pi<float>() / (static_cast<float>(circle_slice_edges_count));
-	float const d_spread = spread_length / (static_cast<float>(spread_slice_edges_count));
-
-	// generate vertices iteratively
-	size_t index = 0u;
-	float theta = 0.0f;
-	for (unsigned int i = 0u; i < circle_slice_vertices_count; ++i) {
-		float const cos_theta = std::cos(theta);
-		float const sin_theta = std::sin(theta);
-
-		float distance_to_centre = spread_start;
-		for (unsigned int j = 0u; j < spread_slice_vertices_count; ++j) {
-			// vertex
-			vertices[index] = glm::vec3(distance_to_centre * cos_theta,
-				distance_to_centre * sin_theta,
-				0.0f);
-			distance_to_centre += d_spread;
-			++index;
-		}
-
-		theta += d_theta;
-	}
-
-	// create index array
-	auto index_sets = std::vector<glm::uvec3>(2u * circle_slice_edges_count * spread_slice_edges_count);
-
-	// generate indices iteratively
-	index = 0u;
-	for (unsigned int i = 0u; i < circle_slice_edges_count; ++i)
-	{
-		for (unsigned int j = 0u; j < spread_slice_edges_count; ++j)
-		{
-			index_sets[index] = glm::uvec3(spread_slice_vertices_count * (i + 0u) + (j + 0u),
-				spread_slice_vertices_count * (i + 0u) + (j + 1u),
-				spread_slice_vertices_count * (i + 1u) + (j + 1u));
-			++index;
-
-			index_sets[index] = glm::uvec3(spread_slice_vertices_count * (i + 0u) + (j + 0u),
-				spread_slice_vertices_count * (i + 1u) + (j + 1u),
-				spread_slice_vertices_count * (i + 1u) + (j + 0u));
-			++index;
-		}
-	}
-
-	bonobo::mesh_data data;
-	glGenVertexArrays(1, &data.vao);
-	glGenBuffers(1, &data.bo);
-	glBindVertexArray(data.vao);
-	glBindBuffer(GL_ARRAY_BUFFER, data.bo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), static_cast<GLvoid const*>(vertices.data()), GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	data.vertices_nb = vertices_nb;
-	// also set instance data
-	unsigned int instanceVBO;
-	glGenBuffers(1, &instanceVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * particleNum, static_cast<GLvoid const*>(positions.data()), GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, instanceVBO); // this attribute comes from a different vertex buffer
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	//我们调用了glVertexAttribDivisor。这个函数告诉了OpenGL该什么时候更新顶点属性的内容至新一组数据。它的第一个参数是需要的顶点属性，第二个参数是属性除数(Attribute Divisor)。默认情况下，属性除数是0，告诉OpenGL我们需要在顶点着色器的每次迭代时更新顶点属性。将它设置为1时，我们告诉OpenGL我们希望在渲染一个新实例的时候更新顶点属性。而设置为2时，我们希望每2个实例更新一次属性，以此类推。我们将属性除数设置为1，是在告诉OpenGL，处于位置值2的顶点属性是一个实例化数组。
-	glVertexAttribDivisor(1, 1); // tell OpenGL this is an instanced vertex attribute.
-
-	data.indices_nb = static_cast<GLsizei>(index_sets.size() * 3u);
-	glGenBuffers(1, &data.ibo);
-	assert(data.ibo != 0u);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.ibo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(index_sets.size() * sizeof(glm::uvec3)), reinterpret_cast<GLvoid const*>(index_sets.data()), GL_STATIC_DRAW);
-
-	glBindVertexArray(0u);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
-
-	return data;
-}
-bonobo::mesh_data
 parametric_shapes::createBriefCircleRingBatch2(float const radius,
 	float const spread_length,
 	unsigned int const circle_split_count,
@@ -783,107 +691,336 @@ parametric_shapes::createBriefCircleRingBatch2(float const radius,
 
 	return data;
 }
-	bonobo::mesh_data
-		parametric_shapes::createBriefCircleRingBatch3(float const radius,
-			float const spread_length,
-			unsigned int const circle_split_count,
-			unsigned int const spread_split_count, int particleNum, std::vector<glm::vec2>* positions, std::vector<glm::vec2>* velocities)
+bonobo::mesh_data
+	parametric_shapes::createBriefCircleRingBatch3(float const radius,
+		float const spread_length,
+		unsigned int const circle_split_count,
+		unsigned int const spread_split_count, int particleNum, std::vector<glm::vec2>* positions, std::vector<glm::vec2>* velocities)
+{
+	auto const circle_slice_edges_count = circle_split_count + 1u;
+	auto const spread_slice_edges_count = spread_split_count + 1u;
+	auto const circle_slice_vertices_count = circle_slice_edges_count + 1u;
+	auto const spread_slice_vertices_count = spread_slice_edges_count + 1u;
+	auto const vertices_nb = circle_slice_vertices_count * spread_slice_vertices_count;
+
+	auto vertices = std::vector<glm::vec3>(vertices_nb);
+
+	float const spread_start = radius - 0.5f * spread_length;
+	float const d_theta = glm::two_pi<float>() / (static_cast<float>(circle_slice_edges_count));
+	float const d_spread = spread_length / (static_cast<float>(spread_slice_edges_count));
+
+	// generate vertices iteratively
+	size_t index = 0u;
+	float theta = 0.0f;
+	for (unsigned int i = 0u; i < circle_slice_vertices_count; ++i) {
+		float const cos_theta = std::cos(theta);
+		float const sin_theta = std::sin(theta);
+
+		float distance_to_centre = spread_start;
+		for (unsigned int j = 0u; j < spread_slice_vertices_count; ++j) {
+			// vertex
+			vertices[index] = glm::vec3(distance_to_centre * cos_theta,
+				distance_to_centre * sin_theta,
+				0.0f);
+			distance_to_centre += d_spread;
+			++index;
+		}
+
+		theta += d_theta;
+	}
+
+	// create index array
+	auto index_sets = std::vector<glm::uvec3>(2u * circle_slice_edges_count * spread_slice_edges_count);
+
+	// generate indices iteratively
+	index = 0u;
+	for (unsigned int i = 0u; i < circle_slice_edges_count; ++i)
 	{
-		auto const circle_slice_edges_count = circle_split_count + 1u;
-		auto const spread_slice_edges_count = spread_split_count + 1u;
-		auto const circle_slice_vertices_count = circle_slice_edges_count + 1u;
-		auto const spread_slice_vertices_count = spread_slice_edges_count + 1u;
-		auto const vertices_nb = circle_slice_vertices_count * spread_slice_vertices_count;
+		for (unsigned int j = 0u; j < spread_slice_edges_count; ++j)
+		{
+			index_sets[index] = glm::uvec3(spread_slice_vertices_count * (i + 0u) + (j + 0u),
+				spread_slice_vertices_count * (i + 0u) + (j + 1u),
+				spread_slice_vertices_count * (i + 1u) + (j + 1u));
+			++index;
 
-		auto vertices = std::vector<glm::vec3>(vertices_nb);
+			index_sets[index] = glm::uvec3(spread_slice_vertices_count * (i + 0u) + (j + 0u),
+				spread_slice_vertices_count * (i + 1u) + (j + 1u),
+				spread_slice_vertices_count * (i + 1u) + (j + 0u));
+			++index;
+		}
+	}
 
-		float const spread_start = radius - 0.5f * spread_length;
-		float const d_theta = glm::two_pi<float>() / (static_cast<float>(circle_slice_edges_count));
-		float const d_spread = spread_length / (static_cast<float>(spread_slice_edges_count));
+	bonobo::mesh_data data;
+	glGenVertexArrays(1, &data.vao);
+	assert(data.vao != 0u);
+	glBindVertexArray(data.vao);
 
-		// generate vertices iteratively
-		size_t index = 0u;
-		float theta = 0.0f;
-		for (unsigned int i = 0u; i < circle_slice_vertices_count; ++i) {
+	auto const vertices_offset = 0u;
+	auto const vertices_size = static_cast<GLsizeiptr>(vertices.size() * sizeof(glm::vec3));
+	auto const positions_offset = vertices_size;
+	auto const positions_size = static_cast<GLsizeiptr>(positions->size() * sizeof(glm::vec2));
+	auto const velocities_offset = positions_offset + positions_size;
+	auto const velocities_size = static_cast<GLsizeiptr>(velocities->size() * sizeof(glm::vec2));
+	auto const bo_size = static_cast<GLsizeiptr>(vertices_size + positions_size + velocities_size);
+	glGenBuffers(1, &data.bo);
+	assert(data.bo != 0u);
+	glBindBuffer(GL_ARRAY_BUFFER, data.bo);
+	glBufferData(GL_ARRAY_BUFFER, bo_size, nullptr, GL_STATIC_DRAW);
+
+	glBufferSubData(GL_ARRAY_BUFFER, vertices_offset, vertices_size, static_cast<GLvoid const*>(vertices.data()));
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), reinterpret_cast<GLvoid const*>(0x0));
+
+	glBufferSubData(GL_ARRAY_BUFFER, positions_offset, positions_size, static_cast<GLvoid const*>(positions->data()));
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), reinterpret_cast<GLvoid const*>(positions_offset));
+
+	glBufferSubData(GL_ARRAY_BUFFER, velocities_offset, velocities_size, static_cast<GLvoid const*>(velocities->data()));
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), reinterpret_cast<GLvoid const*>(velocities_offset));
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0u);
+	glVertexAttribDivisor(1, 1);
+	glVertexAttribDivisor(2, 1);
+
+	data.indices_nb = static_cast<GLsizei>(index_sets.size() * 3u);
+	data.vertices_nb = vertices_nb;
+	glGenBuffers(1, &data.ibo);
+	assert(data.ibo != 0u);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.ibo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(index_sets.size() * sizeof(glm::uvec3)), reinterpret_cast<GLvoid const*>(index_sets.data()), GL_STATIC_DRAW);
+
+	glBindVertexArray(0u);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
+
+	return data;
+}
+bonobo::mesh_data
+	parametric_shapes::createSphereBatch(float const radius,
+		unsigned int const longitude_split_count,
+		unsigned int const latitude_split_count, int particleNum, std::vector<glm::vec3>& positions, std::vector<glm::vec3>& velocities)
+{
+	//! \todo Implement this function
+	auto const longitude_slice_edges_count = longitude_split_count + 1u;
+	auto const latitude_slice_edges_count = latitude_split_count + 1u;
+	auto const longitude_slice_vertices_count = longitude_slice_edges_count + 1u;
+	auto const latitude_slice_vertices_count = latitude_slice_edges_count + 1u;
+	auto const vertices_nb = longitude_slice_vertices_count * latitude_slice_vertices_count;
+
+	auto vertices = std::vector<glm::vec3>(vertices_nb);
+
+	float const d_theta = glm::two_pi<float>() / (static_cast<float>(longitude_slice_edges_count));
+	float const d_phi = glm::pi<float>() / (static_cast<float>(latitude_slice_edges_count));
+
+	// generate vertices iteratively
+	size_t index = 0u;
+	float theta = 0.0f;
+	float phi = 0.0f;
+	for (unsigned int i = 0u; i < latitude_slice_vertices_count; ++i) {
+		float const cos_phi = std::cos(phi);
+		float const sin_phi = std::sin(phi);
+		theta = 0.0f;
+		for (unsigned int j = 0u; j < longitude_slice_vertices_count; ++j) {
+
+
 			float const cos_theta = std::cos(theta);
 			float const sin_theta = std::sin(theta);
-
-			float distance_to_centre = spread_start;
-			for (unsigned int j = 0u; j < spread_slice_vertices_count; ++j) {
-				// vertex
-				vertices[index] = glm::vec3(distance_to_centre * cos_theta,
-					distance_to_centre * sin_theta,
-					0.0f);
-				distance_to_centre += d_spread;
-				++index;
-			}
-
+			// vertex
+			vertices[index] = glm::vec3(radius * sin_theta * sin_phi,
+				-radius * cos_phi,
+				radius * cos_theta * sin_phi);
+			++index;
 			theta += d_theta;
 		}
 
-		// create index array
-		auto index_sets = std::vector<glm::uvec3>(2u * circle_slice_edges_count * spread_slice_edges_count);
+		phi += d_phi;
+	}
 
-		// generate indices iteratively
-		index = 0u;
-		for (unsigned int i = 0u; i < circle_slice_edges_count; ++i)
+	// create index array
+	auto index_sets = std::vector<glm::uvec3>(2u * longitude_slice_vertices_count * latitude_slice_vertices_count);
+
+	// generate indices iterativelyyu
+	index = 0u;
+	for (unsigned int i = 0u; i <= latitude_slice_edges_count; ++i)
+	{
+		for (unsigned int j = 0u; j <= longitude_slice_edges_count; ++j)
 		{
-			for (unsigned int j = 0u; j < spread_slice_edges_count; ++j)
-			{
-				index_sets[index] = glm::uvec3(spread_slice_vertices_count * (i + 0u) + (j + 0u),
-					spread_slice_vertices_count * (i + 0u) + (j + 1u),
-					spread_slice_vertices_count * (i + 1u) + (j + 1u));
-				++index;
+			index_sets[index] = glm::uvec3(longitude_slice_edges_count * (i + 0u) + (j + 0u),
+				longitude_slice_edges_count * (i + 0u) + (j + 1u),
+				longitude_slice_edges_count * (i + 1u) + (j + 1u));
+			++index;
 
-				index_sets[index] = glm::uvec3(spread_slice_vertices_count * (i + 0u) + (j + 0u),
-					spread_slice_vertices_count * (i + 1u) + (j + 1u),
-					spread_slice_vertices_count * (i + 1u) + (j + 0u));
-				++index;
-			}
+			index_sets[index] = glm::uvec3(longitude_slice_edges_count * (i + 0u) + (j + 0u),
+				longitude_slice_edges_count * (i + 1u) + (j + 1u),
+				longitude_slice_edges_count * (i + 1u) + (j + 0u));
+			++index;
+
+		}
+	}
+
+	bonobo::mesh_data data;
+	glGenVertexArrays(1, &data.vao);
+	assert(data.vao != 0u);
+	glBindVertexArray(data.vao);
+
+	auto const vertices_offset = 0u;
+	auto const vertices_size = static_cast<GLsizeiptr>(vertices.size() * sizeof(glm::vec3));
+	auto const positions_offset = vertices_size;
+	auto const positions_size = static_cast<GLsizeiptr>(positions.size() * sizeof(glm::vec3));
+	auto const velocities_offset = positions_offset + positions_size;
+	auto const velocities_size = static_cast<GLsizeiptr>(velocities.size() * sizeof(glm::vec3));
+	auto const bo_size = static_cast<GLsizeiptr>(vertices_size + positions_size + velocities_size);
+
+	glGenBuffers(1, &data.bo);
+	assert(data.bo != 0u);
+	glBindBuffer(GL_ARRAY_BUFFER, data.bo);
+	glBufferData(GL_ARRAY_BUFFER, bo_size, nullptr, GL_STATIC_DRAW);
+
+	glBufferSubData(GL_ARRAY_BUFFER, vertices_offset, vertices_size, static_cast<GLvoid const*>(vertices.data()));
+	glEnableVertexAttribArray(static_cast<unsigned int>(bonobo::shader_bindings::vertices));
+	glVertexAttribPointer(static_cast<unsigned int>(bonobo::shader_bindings::vertices), 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<GLvoid const*>(0x0));
+
+	glBufferSubData(GL_ARRAY_BUFFER, positions_offset, positions_size, static_cast<GLvoid const*>(positions.data()));
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), reinterpret_cast<GLvoid const*>(positions_offset));
+
+	glBufferSubData(GL_ARRAY_BUFFER, velocities_offset, velocities_size, static_cast<GLvoid const*>(velocities.data()));
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), reinterpret_cast<GLvoid const*>(velocities_offset));
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0u);
+	glVertexAttribDivisor(1, 1);
+	glVertexAttribDivisor(2, 1);
+
+	data.indices_nb = static_cast<GLsizei>(index_sets.size() * 3u);
+	glGenBuffers(1, &data.ibo);
+	assert(data.ibo != 0u);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.ibo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(index_sets.size() * sizeof(glm::uvec3)), reinterpret_cast<GLvoid const*>(index_sets.data()), GL_STATIC_DRAW);
+
+	glBindVertexArray(0u);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
+
+	return data;
+
+	//return bonobo::mesh_data();
+}
+bonobo::mesh_data
+parametric_shapes::createSphereBatch2(float const radius,
+	unsigned int const longitude_split_count,
+	unsigned int const latitude_split_count, int particleNum, std::vector<glm::vec3>& positions, std::vector<glm::vec3>& velocities)
+{
+
+	auto const longtitude_slice_edges_count = longitude_split_count;
+	auto const latitude_slice_edges_count = latitude_split_count;
+	auto const longtitude_slice_vertices_count = longtitude_slice_edges_count + 1u;
+	auto const latitude_slice_vertices_count = latitude_slice_edges_count + 1u;
+	auto const vertices_nb = longtitude_slice_vertices_count * latitude_slice_vertices_count;
+
+	auto vertices = std::vector<glm::vec3>(vertices_nb);
+
+	float d_theta = glm::two_pi<float>() / static_cast<float>(longtitude_slice_edges_count); // 纬度?方向角度间隔,对应赤道一圈被分割成无数份的角度
+	float d_phi = glm::pi<float>() / static_cast<float>(latitude_slice_edges_count); // 经度?方向角度间隔，围绕南北极被分割成无数份的角度
+
+	size_t index = 0u;
+	float theta = 0.0f;
+	float phi = 0.0f;
+
+	for (unsigned int i = 0u; i < latitude_slice_vertices_count; ++i) {
+		for (unsigned int j = 0u; j < longtitude_slice_vertices_count; ++j) {
+			//把当前分割段的角度算出来，简化函数
+			float phi = static_cast<float>(i) * d_phi;
+			float theta = static_cast<float>(j) * d_theta;
+			float const cos_theta = std::cos(theta);
+			float const sin_theta = std::sin(theta);
+			float const cos_phi = std::cos(phi);
+			float const sin_phi = std::sin(phi);
+
+			vertices[index] = glm::vec3(radius * sin_phi * sin_theta, -radius * cos_phi, radius * cos_theta * sin_phi);
+
+			//float u = static_cast<float>(j) / static_cast<float>(longtitude_slice_edges_count);
+			//float v = static_cast<float>(i) / static_cast<float>(latitude_slice_edges_count);
+
+			float u = static_cast<float>(j) / (longtitude_slice_vertices_count - 1);
+			float v = static_cast<float>(i) / (latitude_slice_vertices_count - 1);
+			//float u = theta  / glm::two_pi<float>();
+			//float v = phi / glm::pi<float>();
+			++index;
 		}
 
-		bonobo::mesh_data data;
-		glGenVertexArrays(1, &data.vao);
-		assert(data.vao != 0u);
-		glBindVertexArray(data.vao);
+	}    //每个四边形有两个三角形，空间就得*2
+	auto index_sets = std::vector<glm::uvec3>(2u * longtitude_slice_edges_count * latitude_slice_edges_count);
 
-		auto const vertices_offset = 0u;
-		auto const vertices_size = static_cast<GLsizeiptr>(vertices.size() * sizeof(glm::vec3));
-		auto const positions_offset = vertices_size;
-		auto const positions_size = static_cast<GLsizeiptr>(positions->size() * sizeof(glm::vec2));
-		auto const velocities_offset = positions_offset + positions_size;
-		auto const velocities_size = static_cast<GLsizeiptr>(velocities->size() * sizeof(glm::vec2));
-		auto const bo_size = static_cast<GLsizeiptr>(vertices_size + positions_size + velocities_size);
-		glGenBuffers(1, &data.bo);
-		assert(data.bo != 0u);
-		glBindBuffer(GL_ARRAY_BUFFER, data.bo);
-		glBufferData(GL_ARRAY_BUFFER, bo_size, nullptr, GL_STATIC_DRAW);
 
-		glBufferSubData(GL_ARRAY_BUFFER, vertices_offset, vertices_size, static_cast<GLvoid const*>(vertices.data()));
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), reinterpret_cast<GLvoid const*>(0x0));
+	//int p = 2u*longtitude_slice_edges_count*latitude_slice_edges_count;
 
-		glBufferSubData(GL_ARRAY_BUFFER, positions_offset, positions_size, static_cast<GLvoid const*>(positions->data()));
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), reinterpret_cast<GLvoid const*>(positions_offset));
+	//遍历球体上的所有四边形，分割成两个三角形，注：定点顺序逆时针代表正面，顺时针反面
+	index = 0u;
+	for (int i = 0u; i < latitude_slice_edges_count; ++i)
+	{
+		for (int j = 0u; j < longtitude_slice_edges_count; ++j)
+		{
+			//order：（i，j）->（i+1，j）->（i，j+1）不会越界因为点比edges多1
+			index_sets[index] = glm::uvec3(
+				i * longtitude_slice_vertices_count + j,
+				(i + 1) * longtitude_slice_vertices_count + j,
+				i * longtitude_slice_vertices_count + j + 1);
+			++index;
+			//order：(i+1,j)->(i+1,j+1)->(i,j+1)
+			index_sets[index] = glm::uvec3(
+				(i + 1) * longtitude_slice_vertices_count + j,
+				(i + 1) * longtitude_slice_vertices_count + j + 1,
+				i * longtitude_slice_vertices_count + j + 1);
+			++index;
 
-		glBufferSubData(GL_ARRAY_BUFFER, velocities_offset, velocities_size, static_cast<GLvoid const*>(velocities->data()));
-		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), reinterpret_cast<GLvoid const*>(velocities_offset));
-
-		glBindBuffer(GL_ARRAY_BUFFER, 0u);
-		glVertexAttribDivisor(1, 1);
-		glVertexAttribDivisor(2, 1);
-
-		data.indices_nb = static_cast<GLsizei>(index_sets.size() * 3u);
-		data.vertices_nb = vertices_nb;
-		glGenBuffers(1, &data.ibo);
-		assert(data.ibo != 0u);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.ibo);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(index_sets.size() * sizeof(glm::uvec3)), reinterpret_cast<GLvoid const*>(index_sets.data()), GL_STATIC_DRAW);
-
-		glBindVertexArray(0u);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
-
-		return data;
+		}
 	}
+
+	//同circle_RING,我未做任何修改，可复制粘贴直接使用，应该是类似exercise1 的cpu gpu操作（缓冲区
+	bonobo::mesh_data data;
+	glGenVertexArrays(1, &data.vao);
+	assert(data.vao != 0u);
+	glBindVertexArray(data.vao);
+
+	auto const vertices_offset = 0u;
+	auto const vertices_size = static_cast<GLsizeiptr>(vertices.size() * sizeof(glm::vec3));
+	auto const positions_offset = vertices_size;
+	auto const positions_size = static_cast<GLsizeiptr>(positions.size() * sizeof(glm::vec3));
+	auto const velocities_offset = positions_offset + positions_size;
+	auto const velocities_size = static_cast<GLsizeiptr>(velocities.size() * sizeof(glm::vec3));
+	auto const bo_size = static_cast<GLsizeiptr>(vertices_size + positions_size + velocities_size);
+
+	glGenBuffers(1, &data.bo);
+	assert(data.bo != 0u);
+	glBindBuffer(GL_ARRAY_BUFFER, data.bo);
+	glBufferData(GL_ARRAY_BUFFER, bo_size, nullptr, GL_STATIC_DRAW);
+
+	glBufferSubData(GL_ARRAY_BUFFER, vertices_offset, vertices_size, static_cast<GLvoid const*>(vertices.data()));
+	glEnableVertexAttribArray(static_cast<unsigned int>(bonobo::shader_bindings::vertices));
+	glVertexAttribPointer(static_cast<unsigned int>(bonobo::shader_bindings::vertices), 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<GLvoid const*>(0x0));
+
+	glBufferSubData(GL_ARRAY_BUFFER, positions_offset, positions_size, static_cast<GLvoid const*>(positions.data()));
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<GLvoid const*>(positions_offset));
+
+	glBufferSubData(GL_ARRAY_BUFFER, velocities_offset, velocities_size, static_cast<GLvoid const*>(velocities.data()));
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<GLvoid const*>(velocities_offset));
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0u);
+	glVertexAttribDivisor(1, 1);
+	glVertexAttribDivisor(2, 1);
+
+	data.indices_nb = static_cast<GLsizei>(index_sets.size() * 3u);
+
+	glGenBuffers(1, &data.ibo);
+	assert(data.ibo != 0u);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.ibo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(index_sets.size() * sizeof(glm::uvec3)), reinterpret_cast<GLvoid const*>(index_sets.data()), GL_STATIC_DRAW);
+
+	glBindVertexArray(0u);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
+
+	//! \todo Implement this function
+	return data;
+}

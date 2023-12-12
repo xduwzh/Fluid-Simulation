@@ -27,6 +27,8 @@ public:
 		glm::mat4 const& parent_transform = glm::mat4(1.0f)) const;
 	void render(glm::mat4 const& view_projection, int instanceNum, std::vector<glm::vec2>& positions, std::vector<glm::vec2>& velocities,
 		glm::mat4 const& parent_transform = glm::mat4(1.0f)) const;
+	void render(glm::mat4 const& view_projection, int instanceNum, std::vector<glm::vec3>& positions, std::vector<glm::vec3>& velocities,
+		glm::mat4 const& parent_transform = glm::mat4(1.0f)) const;
 	void render(glm::mat4 const& view_projection, int instanceNum, GLuint positionsBuffer, GLuint velocitiesBuffer,
 		glm::mat4 const& parent_transform) const;
 
@@ -48,6 +50,10 @@ public:
 	            std::function<void (GLuint)> const& set_uniforms = [](GLuint /*programID*/){}) const;
 	void render(glm::mat4 const& view_projection, glm::mat4 const& world,
 		int instanceNum, std::vector<glm::vec2>& positions, std::vector<glm::vec2>& velocities,
+		GLuint program,
+		std::function<void(GLuint)> const& set_uniforms = [](GLuint /*programID*/) {}) const;
+	void render(glm::mat4 const& view_projection, glm::mat4 const& world,
+		int instanceNum, std::vector<glm::vec3>& positions, std::vector<glm::vec3>& velocities,
 		GLuint program,
 		std::function<void(GLuint)> const& set_uniforms = [](GLuint /*programID*/) {}) const;
 	void render(glm::mat4 const& view_projection, glm::mat4 const& world,

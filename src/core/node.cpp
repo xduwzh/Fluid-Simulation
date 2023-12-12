@@ -20,6 +20,12 @@ Node::render(glm::mat4 const& view_projection, int instanceNum, std::vector<glm:
 		render(view_projection, parent_transform * _transform.GetMatrix(), instanceNum, positions, velocities, *_program, _set_uniforms);
 }
 void
+Node::render(glm::mat4 const& view_projection, int instanceNum, std::vector<glm::vec3>& positions, std::vector<glm::vec3>& velocities, glm::mat4 const& parent_transform) const
+{
+	if (_program != nullptr)
+		render(view_projection, parent_transform * _transform.GetMatrix(), instanceNum, positions, velocities, *_program, _set_uniforms);
+}
+void
 Node::render(glm::mat4 const& view_projection,glm::vec2 position ,glm::mat4 const& parent_transform) const
 {
 	glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(position.x, position.y, 0.0f));
@@ -136,6 +142,100 @@ Node::render(glm::mat4 const& view_projection, glm::mat4 const& world, int insta
 			mappedBufferPosition[2 * i + 1] = positions[i].y;
 			mappedBufferPosition[velovityOffset + 2 * i] = velocities[i].x;
 			mappedBufferPosition[velovityOffset + 2 * i + 1] = velocities[i].y;
+		}
+		// cancel mapping
+		glUnmapBuffer(GL_ARRAY_BUFFER);
+	}
+	//std::cout << _vertices_nb << std::endl;
+	//std::cout << instanceNum << std::endl;
+	glBindVertexArray(_vao);
+	if (_has_indices) {
+		if (instanceNum == 1) {
+			glDrawElements(_drawing_mode, _indices_nb, GL_UNSIGNED_INT, reinterpret_cast<GLvoid const*>(0x0));
+		}
+		else {
+			glDrawElementsInstanced(_drawing_mode, _indices_nb, GL_UNSIGNED_INT, reinterpret_cast<GLvoid const*>(0x0), instanceNum);
+			//std::cout << "instance render" << std::endl;
+		}
+	}
+	else {
+		if (instanceNum == 1) {
+			glDrawArrays(_drawing_mode, 0, _vertices_nb);
+		}
+		else {
+			glDrawArraysInstanced(_drawing_mode, 0, _vertices_nb, instanceNum);
+		}
+	}
+	glBindVertexArray(0u);
+
+	//glBindVertexArray(_vao);
+	//if (_has_indices)
+	//	glDrawElements(_drawing_mode, _indices_nb, GL_UNSIGNED_INT, reinterpret_cast<GLvoid const*>(0x0));
+	//else
+	//	glDrawArrays(_drawing_mode, 0, _vertices_nb);
+	//glBindVertexArray(0u);
+
+	for (auto const& texture : _textures) {
+		glBindTexture(std::get<2>(texture), 0);
+		glUniform1i(glGetUniformLocation(program, std::get<0>(texture).c_str()), 0);
+
+		std::string texture_presence_var_name = "has_" + std::get<0>(texture);
+		glUniform1i(glGetUniformLocation(program, texture_presence_var_name.c_str()), 0);
+	}
+
+	glUseProgram(0u);
+
+	utils::opengl::debug::endDebugGroup();
+}
+void
+Node::render(glm::mat4 const& view_projection, glm::mat4 const& world, int instanceNum, std::vector<glm::vec3>& positions, std::vector<glm::vec3>& velocities, GLuint program, std::function<void(GLuint)> const& set_uniforms) const
+{
+	if (_vao == 0u || program == 0u)
+		return;
+
+	utils::opengl::debug::beginDebugGroup(_name);
+
+	glUseProgram(program);
+
+	auto const normal_model_to_world = glm::transpose(glm::inverse(world));
+
+	set_uniforms(program);
+
+	glUniformMatrix4fv(glGetUniformLocation(program, "vertex_model_to_world"), 1, GL_FALSE, glm::value_ptr(world));
+	glUniformMatrix4fv(glGetUniformLocation(program, "normal_model_to_world"), 1, GL_FALSE, glm::value_ptr(normal_model_to_world));
+	glUniformMatrix4fv(glGetUniformLocation(program, "vertex_world_to_clip"), 1, GL_FALSE, glm::value_ptr(view_projection));
+
+	for (size_t i = 0u; i < _textures.size(); ++i) {
+		auto const& texture = _textures[i];
+		glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(i));
+		glBindTexture(std::get<2>(texture), std::get<1>(texture));
+		glUniform1i(glGetUniformLocation(program, std::get<0>(texture).c_str()), static_cast<GLint>(i));
+
+		std::string texture_presence_var_name = "has_" + std::get<0>(texture);
+		glUniform1i(glGetUniformLocation(program, texture_presence_var_name.c_str()), 1);
+	}
+
+	glUniform3fv(glGetUniformLocation(program, "diffuse_colour"), 1, glm::value_ptr(_constants.diffuse));
+	glUniform3fv(glGetUniformLocation(program, "specular_colour"), 1, glm::value_ptr(_constants.specular));
+	glUniform3fv(glGetUniformLocation(program, "ambient_colour"), 1, glm::value_ptr(_constants.ambient));
+	glUniform3fv(glGetUniformLocation(program, "emissive_colour"), 1, glm::value_ptr(_constants.emissive));
+	glUniform1f(glGetUniformLocation(program, "shininess_value"), _constants.shininess);
+	glUniform1f(glGetUniformLocation(program, "index_of_refraction_value"), _constants.indexOfRefraction);
+	glUniform1f(glGetUniformLocation(program, "opacity_value"), _constants.opacity);
+
+	glBindBuffer(GL_ARRAY_BUFFER, _vao);
+	//buffer map
+	GLfloat* mappedBufferPosition = static_cast<GLfloat*>(glMapBufferRange(GL_ARRAY_BUFFER, _vertices_nb * sizeof(glm::vec3), 2 * positions.size() * sizeof(glm::vec3), GL_MAP_WRITE_BIT));
+	auto velovityOffset = 3 * positions.size();
+	if (mappedBufferPosition) {
+		// updata
+		for (int i = 0; i < positions.size(); i++) {
+			mappedBufferPosition[3 * i] = positions[i].x;
+			mappedBufferPosition[3 * i + 1] = positions[i].y;
+			mappedBufferPosition[3 * i + 2] = positions[i].z;
+			mappedBufferPosition[velovityOffset + 3 * i] = velocities[i].x;
+			mappedBufferPosition[velovityOffset + 3 * i + 1] = velocities[i].y;
+			mappedBufferPosition[velovityOffset + 3 * i + 2] = velocities[i].z;
 		}
 		// cancel mapping
 		glUnmapBuffer(GL_ARRAY_BUFFER);

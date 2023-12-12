@@ -109,3 +109,27 @@ install (
 		EDAN35_project
 	DESTINATION [[bin]]
 )
+
+# project3D
+add_executable (EDAN35_project3D)
+target_sources (
+	EDAN35_project3D
+	PRIVATE
+		[[project3D.hpp]]
+		[[project3D.cpp]]
+)
+target_link_libraries (EDAN35_project3D PRIVATE assignment_setup interpolation parametric_shapes)
+copy_dlls (EDAN35_project3D "${CMAKE_CURRENT_BINARY_DIR}")
+
+
+install (
+	TARGETS
+		EDAF80_Assignment1
+		EDAF80_Assignment2
+		EDAF80_Assignment3
+		EDAF80_Assignment4
+		EDAF80_Assignment5
+		EDAN35_project
+		EDAN35_project3D
+	DESTINATION [[bin]]
+)

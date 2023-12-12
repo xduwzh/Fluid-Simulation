@@ -1,6 +1,6 @@
 #version 410
 
-in vec2 paticleVelocity;
+in vec3 paticleVelocity;
 out vec4 frag_color;
 
 void main()

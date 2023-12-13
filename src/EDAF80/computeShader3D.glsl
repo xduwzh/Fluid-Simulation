@@ -233,14 +233,14 @@ void main(){
         float dst = sqrt(sqrDstToNeighbour);
         vec3 dir = dst > 0 ? offsetToNeighbour / dst : vec3(0, 1, 0);
 
-        pressureForce += dir * DensityDerivative(dst, smoothingRadius) * sharedPressure / densityNeighbour;
-        pressureForce += dir * NearDensityDerivative(dst, smoothingRadius) * sharedNearPressure / nearDensityNeighbour;
+        pressureForce += dir * DensityDerivative(dst, smoothingRadius) * sharedPressure / 10;
+        pressureForce += dir * NearDensityDerivative(dst, smoothingRadius) * sharedNearPressure / 10;
     }
 
     vec3 acceleration = 0.0001 * pressureForce / density;
-    //particles[particleIndex].velocities += acceleration * deltaTime;
+    particles[particleIndex].velocities += acceleration * deltaTime;
     //particles[particleIndex].velocities = vec3(0.001 *pressureForce.z, 0.001 *pressureForce.z, 0);
-    particles[particleIndex].velocities = vec3(100 * density,100*  density, 0);
+    //particles[particleIndex].velocities = vec3(100 * density,100*  density, 0);
 
     vec3 viscosityForce = vec3(0.0f);
     vec3 velocity = particles[particleIndex].velocities;
@@ -268,5 +268,5 @@ void main(){
     //updatePositions º¯Êý6
     particles[particleIndex].positions += particles[particleIndex].velocities * deltaTime;
     
-    //ResolveCollisions(particleIndex);
+    ResolveCollisions(particleIndex);
 }

@@ -249,7 +249,7 @@ Node::render(glm::mat4 const& view_projection, glm::mat4 const& world, int insta
 		}
 		else {
 			glDrawElementsInstanced(_drawing_mode, _indices_nb, GL_UNSIGNED_INT, reinterpret_cast<GLvoid const*>(0x0), instanceNum);
-			//std::cout << "instance render" << std::endl;
+			//std::cout << "2instance render" << std::endl;
 		}
 	}
 	else {

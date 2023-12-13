@@ -27,9 +27,9 @@ uniform float pressureMultiplier;
 uniform float nearPressureMultiplier;
 uniform float viscosityStrength;
 
-//uniform vec2 interactionInputPoint;
-//uniform float interactionInputStrength;
-//uniform float interactionInputRadius;
+uniform vec2 interactionInputPoint;
+uniform float interactionInputStrength;
+uniform float interactionInputRadius;
 const int hashK1 = 15823;
 const int hashK2 = 9737333;
 const float pi = 3.14159265359;
@@ -227,6 +227,21 @@ vec2 ExternalForces(vec2 pos, vec2 velocity)
     vec2 gravityAccel = vec2(0.0, gravity);
     
     // 交互影响重力
+    if (interactionInputStrength != 0.0) {
+        vec2 inputPointOffset = interactionInputPoint - pos;  //交互点与粒子位置的偏移
+        float sqrDst = dot(inputPointOffset, inputPointOffset);
+        if (sqrDst < interactionInputRadius * interactionInputRadius)   //判断是否在交互影响半径
+        {
+            float dst = sqrt(sqrDst);   //实际距离
+            float edgeT = (dst / interactionInputRadius);  //边缘距离的差值参数
+            float centreT = 1.0 - edgeT;  //中心距离
+            vec2 dirToCentre = inputPointOffset / dst;  //单位向量。指向交互中心
+            float gravityWeight = 1.0 - (centreT * clamp(interactionInputStrength / 10.0, 0.0, 1.0));
+            vec2 accel = gravityAccel * gravityWeight + dirToCentre * centreT * interactionInputStrength;
+            accel -= velocity * centreT;
+            return accel;
+        }
+    }
     //这一段先删除，因为还没有设置交互
 
     return gravityAccel;

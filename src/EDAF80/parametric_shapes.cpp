@@ -1001,17 +1001,18 @@ parametric_shapes::createSphereBatch2(float const radius,
 
 	glBufferSubData(GL_ARRAY_BUFFER, positions_offset, positions_size, static_cast<GLvoid const*>(positions.data()));
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<GLvoid const*>(positions_offset));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), reinterpret_cast<GLvoid const*>(positions_offset));
 
 	glBufferSubData(GL_ARRAY_BUFFER, velocities_offset, velocities_size, static_cast<GLvoid const*>(velocities.data()));
 	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<GLvoid const*>(velocities_offset));
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), reinterpret_cast<GLvoid const*>(velocities_offset));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0u);
 	glVertexAttribDivisor(1, 1);
 	glVertexAttribDivisor(2, 1);
 
 	data.indices_nb = static_cast<GLsizei>(index_sets.size() * 3u);
+	data.vertices_nb = vertices_nb;
 
 	glGenBuffers(1, &data.ibo);
 	assert(data.ibo != 0u);

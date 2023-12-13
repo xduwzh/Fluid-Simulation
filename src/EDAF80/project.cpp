@@ -322,7 +322,7 @@ edaf80::project::run()
 		particles[i].velocity = velocities[i];
 		//particles[i].density = CalculateDensity1(particles);
 	}
-	//std::cout << particles[10].density << std::endl;
+	//std::cout << sizeof(particleParameter) << std::endl;
 	
 
 	//GLuint positionBuffer;
@@ -517,7 +517,11 @@ edaf80::project::run()
 			show_gui = !show_gui;
 		if (inputHandler.GetKeycodeState(GLFW_KEY_F11) & JUST_RELEASED)
 			mWindowManager.ToggleFullscreenStatusForWindow(window);
-
+		glm::vec2 mousePos;
+		if (inputHandler.GetMouseState(GLFW_MOUSE_BUTTON_RIGHT) & PRESSED) {
+			mousePos = inputHandler.GetMousePosition();
+			std::cout << mousePos << std::endl;
+		}
 
 		// Retrieve the actual framebuffer size: for HiDPI monitors,
 		// you might end up with a framebuffer larger than what you
@@ -567,6 +571,10 @@ edaf80::project::run()
 			glUniform1f(glGetUniformLocation(computeProgram, "pressureMultiplier"), pressureMultiplier);
 			glUniform1f(glGetUniformLocation(computeProgram, "nearPressureMultiplier"), nearPressureMultiplier);
 			glUniform1f(glGetUniformLocation(computeProgram, "viscosityStrength"), viscosityStrength);
+
+			glUniform1f(glGetUniformLocation(computeProgram, "interactionInputRadius"), interactionRadius);
+			glUniform1f(glGetUniformLocation(computeProgram, "interactionInputStrength"), interactionStrength);
+			glUniform2fv(glGetUniformLocation(computeProgram, "interactionInputPoint"), 1, glm::value_ptr(mousePos));
 			glDispatchCompute(100, 1, 1);
 			//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 			glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, particles.size() * sizeof(particleParameter), particles.data());
@@ -575,7 +583,7 @@ edaf80::project::run()
 				velocities[i] = particles[i].velocity;
 			}
 			//test
-			std::cout << velocities[100] << std::endl;
+			//std::cout << velocities[100] << std::endl;
 			//glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, positions.size() * sizeof(glm::vec2), velocities.size() * sizeof(glm::vec2), velocities.data());
 			//glDeleteBuffers(1, &buffer);
 			//glDeleteProgram(computeProgram);
@@ -603,6 +611,8 @@ edaf80::project::run()
 			ImGui::SliderFloat("Basis thickness scale", &basis_thickness_scale, 0.0f, 100.0f);
 			ImGui::SliderFloat("Basis length scale", &basis_length_scale, 0.0f, 100.0f);
 			bonobo::uiSelectPolygonMode("Polygon mode", polygon_mode);
+			ImGui::SliderFloat("Boundary width", &boundsSize.x, 10.0f, 30.0f);
+			ImGui::SliderFloat("Boundary height", &boundsSize.y, 5.0f, 20.0f);
 		}
 		ImGui::End();
 

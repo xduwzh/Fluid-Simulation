@@ -183,16 +183,15 @@ edaf80::project3D::run()
 	circle.set_program(&fallback_shader, set_uniforms);
 	circle.get_transform().SetTranslate(glm::vec3(0.0f, 0.0f, 0.0f));
 	TRSTransformf& circle_rings_transform_ref = circle.get_transform();
-
+	
 
 	std::vector<particleParameter> particles(spawner.particleCount);
 	for (int i = 0; i < spawner.particleCount; i++) {
 		particles[i].position = positions[i];
 		particles[i].predictedPosition = positions[i];
 		particles[i].velocity = velocities[i];
-		//particles[i].density = CalculateDensity1(particles);
+		//partparticles[i].velocity = velocities[i];icles[i].density = CalculateDensity1(particles);
 	}
-	//std::cout << particles[10].density << std::endl;
 
 
 	//GLuint positionBuffer;
@@ -221,13 +220,14 @@ edaf80::project3D::run()
 	//glBufferSubData(GL_SHADER_STORAGE_BUFFER, positions.size() * sizeof(glm::vec2), velocities.size() * sizeof(glm::vec2), velocities.data());
 	//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, velocityBuffer);
 	//-----------------------------------
+
 	GLuint particleBuffer;
 	glGenBuffers(1, &particleBuffer);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleBuffer);
 	glBufferData(GL_SHADER_STORAGE_BUFFER, particles.size() * sizeof(particleParameter), particles.data(), GL_DYNAMIC_DRAW);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, particleBuffer);
 
-	std::string computeShaderSource = readFile("F:/desktop/CourseFile/ComputerGraphics/src/EDAF80/computeShader5.glsl");
+	std::string computeShaderSource = readFile("F:/desktop/CourseFile/ComputerGraphics/src/EDAF80/computeShader3D.glsl");
 	if (computeShaderSource.empty()) {
 		std::cerr << "Failed to read compute shader source file." << std::endl;
 		return;
@@ -335,8 +335,6 @@ edaf80::project3D::run()
 	auto polygon_mode = bonobo::polygon_mode_t::fill;
 
 
-
-
 	while (!glfwWindowShouldClose(window)) {
 		auto const nowTime = std::chrono::high_resolution_clock::now();
 		auto const deltaTimeUs = std::chrono::duration_cast<std::chrono::microseconds>(nowTime - lastTime);
@@ -362,8 +360,8 @@ edaf80::project3D::run()
 		//boundaryCollisions(&position, &velocity);
 		//circle.get_transform().SetTranslate(position);
 		//test
-		//for (int i = 0; i < velocities.size(); i++) {
-		//	velocities[i] = velocity;
+		//for (int i = 0; i < 5000; i++) {
+		//	positions[i] += 10.0f;
 		//}
 
 		auto& io = ImGui::GetIO();
@@ -406,6 +404,7 @@ edaf80::project3D::run()
 		//
 
 
+
 		mWindowManager.NewImGuiFrame();
 
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
@@ -424,33 +423,42 @@ edaf80::project3D::run()
 			//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, positionBuffer);
 			//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, velocityBuffer);
 			//-------------------------------------------------
-			//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, particleBuffer);
-			//glUseProgram(computeProgram);
-			//glUniform1f(glGetUniformLocation(computeProgram, "collisionDamping"), collisionDamping);
-			//glUniform1f(glGetUniformLocation(computeProgram, "gravity"), gravity);
-			//glUniform1f(glGetUniformLocation(computeProgram, "particleRadius"), particleRadius);
-			//glUniform1f(glGetUniformLocation(computeProgram, "deltaTime"), float_deltaTime);
-			//glUniform2fv(glGetUniformLocation(computeProgram, "boundsSize"), 1, glm::value_ptr(boundsSize));
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, particleBuffer);
+			glUseProgram(computeProgram);
+			glUniform1f(glGetUniformLocation(computeProgram, "collisionDamping"), collisionDamping);
+			glUniform1f(glGetUniformLocation(computeProgram, "gravity"), gravity);
+			glUniform1f(glGetUniformLocation(computeProgram, "particleRadius"), particleRadius);
+			glUniform1f(glGetUniformLocation(computeProgram, "deltaTime"), float_deltaTime);
+			glUniform3fv(glGetUniformLocation(computeProgram, "boundsSize"), 1, glm::value_ptr(boundsSize));
 
-			//glUniform1i(glGetUniformLocation(computeProgram, "numParticles"), particlesNum);
-			//glUniform1f(glGetUniformLocation(computeProgram, "smoothingRadius"), smoothingRadius);
-			//glUniform1f(glGetUniformLocation(computeProgram, "targetDensity"), targetDensity);
-			//glUniform1f(glGetUniformLocation(computeProgram, "pressureMultiplier"), pressureMultiplier);
-			//glUniform1f(glGetUniformLocation(computeProgram, "nearPressureMultiplier"), nearPressureMultiplier);
-			//glUniform1f(glGetUniformLocation(computeProgram, "viscosityStrength"), viscosityStrength);
-			//glDispatchCompute(100, 1, 1);
-			////glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-			//glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, particles.size() * sizeof(particleParameter), particles.data());
-			//for (int i = 0; i < spawner.particleCount; i++) {
-			//	positions[i] = particles[i].position;
-			//	velocities[i] = particles[i].velocity;
-			//}
-			////test
-			////glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, positions.size() * sizeof(glm::vec2), velocities.size() * sizeof(glm::vec2), velocities.data());
-			////glDeleteBuffers(1, &buffer);
-			////glDeleteProgram(computeProgram);
-			//glUseProgram(0);
-			//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0u);
+			glUniform1i(glGetUniformLocation(computeProgram, "numParticles"), particlesNum);
+			glUniform1f(glGetUniformLocation(computeProgram, "smoothingRadius"), smoothingRadius);
+			glUniform1f(glGetUniformLocation(computeProgram, "targetDensity"), targetDensity);
+			glUniform1f(glGetUniformLocation(computeProgram, "pressureMultiplier"), pressureMultiplier);
+			glUniform1f(glGetUniformLocation(computeProgram, "nearPressureMultiplier"), nearPressureMultiplier);
+			glUniform1f(glGetUniformLocation(computeProgram, "viscosityStrength"), viscosityStrength);
+
+			glUniformMatrix4fv(glGetUniformLocation(computeProgram, "localToWorld"), 1, GL_FALSE, glm::value_ptr(localToWorld));
+			glUniformMatrix4fv(glGetUniformLocation(computeProgram, "worldToLocal"), 1, GL_FALSE, glm::value_ptr(worldToLocal));
+
+			glDispatchCompute(125, 1, 1);
+			//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+			glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, particles.size() * sizeof(particleParameter), particles.data());
+			for (int i = 0; i < spawner.particleCount; i++) {
+				positions[i] = particles[i].position;
+				velocities[i] = particles[i].velocity;
+			}
+	/*		for (int i = 0; i < spawner.particleCount; i++) {
+				std::cout << particles[i].position << std::endl;
+				std::cout << particles[i].velocity << std::endl;
+			}*/
+			//std::cout << particles[1000].position << std::endl;
+			//test
+			//glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, positions.size() * sizeof(glm::vec2), velocities.size() * sizeof(glm::vec2), velocities.data());
+			//glDeleteBuffers(1, &buffer);
+			//glDeleteProgram(computeProgram);
+			glUseProgram(0);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0u);
 			//------------------------------------------
 			//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0u);
 			//circle.render(mCamera.GetWorldToClipMatrix());

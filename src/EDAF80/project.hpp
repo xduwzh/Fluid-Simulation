@@ -114,6 +114,9 @@ namespace edaf80
 		float nearPressureMultiplier = 18.0f;
 		float viscosityStrength = 0.06f;
 
+		float interactionRadius = 2;
+		float interactionStrength = 90;
+
 		float pi = 3.14159265359f;
 		
 	};
